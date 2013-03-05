@@ -21,7 +21,7 @@
 use strict;
 use warnings;
 
-use FindBin qw($Bin);
+use FindBin qw($RealBin);
 use File::stat;
 use LWP::UserAgent;             # fetch content from web
 use Mojo::DOM;                  # parse HTML into DOM tree
@@ -30,11 +30,11 @@ use Digest::MD5 qw(md5_hex);    # unique temp filename
 use Encode qw(encode);          # handle wide-character
 use HTML::Entities;             # insert HTML content into description
 
-my $BOARD_FILE    = "$Bin/cache/noc_board.txt";
+my $BOARD_FILE    = "$RealBin/cache/noc_board.txt";
 my $NOC_BOARD_URL = 'http://noc.twaren.net/noc_2008/NOCBulletin/index.php';
 my $NOC_BASE_URL  = 'http://noc.twaren.net';
 
-my $RSS_FILE = "$Bin/cache/noc_board.xml";
+my $RSS_FILE = "$RealBin/cache/noc_board.xml";
 
 sub _fetch_content_from_remote {
     my ($url) = @_;
@@ -102,7 +102,7 @@ sub create_rss_file {
 
     foreach my $e (@items) {
         my $url      = $NOC_BASE_URL . $e->{'url'};
-        my $filename = "$Bin/cache/" . md5_hex($url) . ".temp";
+        my $filename = "$RealBin/cache/" . md5_hex($url) . ".temp";
         my $content  = get_content( $filename, $url );
         my $dom = Mojo::DOM->new->charset('UTF-8')->xml(1)->parse($content);
 
