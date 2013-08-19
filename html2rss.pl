@@ -23,12 +23,14 @@ use warnings;
 
 use FindBin qw($RealBin);
 use File::stat;
-use LWP::UserAgent;             # fetch content from web
-use Mojo::DOM;                  # parse HTML into DOM tree
+use LWP::UserAgent;              # fetch content from web
+use Mojo::DOM;                   # parse HTML into DOM tree
 use XML::RSS;
-use Digest::MD5 qw(md5_hex);    # unique temp filename
-use Encode qw(encode);          # handle wide-character
-use HTML::Entities;             # insert HTML content into description
+use Digest::MD5 qw(md5_hex);     # unique temp filename
+use Encode qw(encode decode);    # handle wide-character
+use HTML::Entities;              # insert HTML content into description
+use POSIX qw(strftime);          # compatible for RFC-822 date-time format
+use Date::Parse;
 
 my $BOARD_FILE    = "$RealBin/cache/noc_board.txt";
 my $NOC_BOARD_URL = 'http://noc.twaren.net/noc_2008/NOCBulletin/index.php';
@@ -93,27 +95,32 @@ sub create_rss_file {
     my $rss = XML::RSS->new( version => '2.0', encode_output => 0, );
 
     $rss->channel(
-        title         => 'TWAREN NOC 維運中心公告',
-        link          => 'http://noc.twaren.net/noc_2008/NOCBulletin/',
-        pubDate       => scalar( localtime( time() ) ),
-        lastBuildDate => scalar( localtime( time() ) ),
-        language      => 'zh-tw',
+        title   => 'TWAREN NOC 維運中心公告',
+        link    => 'http://noc.twaren.net/noc_2008/NOCBulletin/',
+        pubDate => strftime( "%a, %d %b %Y %H:%M:%S %z", localtime( time() ) ),
+        lastBuildDate =>
+          strftime( "%a, %d %b %Y %H:%M:%S %z", localtime( time() ) ),
+        language => 'zh-tw',
     );
 
     foreach my $e (@items) {
         my $url      = $NOC_BASE_URL . $e->{'url'};
         my $filename = "$RealBin/cache/" . md5_hex($url) . ".temp";
         my $content  = get_content( $filename, $url );
-        my $dom = Mojo::DOM->new->charset('UTF-8')->xml(1)->parse($content);
+        my $dom = Mojo::DOM->new->xml(0)->parse( decode( "utf-8", $content ) );
 
         my $html =
           $dom->find('div[class="content content-font"] table[border="1"]');
 
         $rss->add_item(
-            title       => encode( "utf-8",        $e->{'title'} ),
-            link        => $url,
-            description => encode_entities( $html, '<>&"' ),
-            pubDate     => $e->{'time'},
+            title => encode( "utf-8", $e->{'title'} ),
+            link  => $url,
+            description =>
+              encode_entities( encode( "utf-8", $html ), q{<>&'"} ),
+            pubDate => strftime(
+                "%a, %d %b %Y %H:%M:%S %z",
+                localtime( str2time( ( $e->{'time'} ) ) )
+            ),
         );
     }
 
@@ -125,14 +132,14 @@ sub create_rss_file {
 # main entry point
 sub main {
     my $html = get_content( $BOARD_FILE, $NOC_BOARD_URL );
-    my $dom = Mojo::DOM->new->charset('UTF-8')->xml(1)->parse($html);
+    my $dom = Mojo::DOM->new->xml(1)->parse( decode( "utf-8", $html ) );
 
     my @events = ();
 
     for my $e ( $dom->find('tr[class="content-hyperlink03"]')->each() ) {
         my %item = ();
-        $item{'title'}      = $e->td->[1]->a->text;
-        $item{'url'}        = $e->td->[1]->a->attrs('href');
+        $item{'title'}      = encode_entities( $e->td->[1]->a->text );
+        $item{'url'}        = $e->td->[1]->a->attr('href');
         $item{'board_type'} = $e->td->[2]->text;
         $item{'event_type'} = $e->td->[3]->text;
         $item{'time'}       = $e->td->[4]->text;
