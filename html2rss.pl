@@ -107,7 +107,7 @@ sub create_rss_file {
         my $url      = $NOC_BASE_URL . $e->{'url'};
         my $filename = "$RealBin/cache/" . md5_hex($url) . ".temp";
         my $content  = get_content( $filename, $url );
-        my $dom = Mojo::DOM->new->xml(0)->parse( decode( "utf-8", $content ) );
+        my $dom = Mojo::DOM->new->xml(1)->parse( decode( "utf-8", $content ) );
 
         my $html =
           $dom->find('div[class="content content-font"] table[border="1"]');
