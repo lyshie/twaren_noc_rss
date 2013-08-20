@@ -112,6 +112,9 @@ sub create_rss_file {
         my $html =
           $dom->find('div[class="content content-font"] table[border="1"]');
 
+        my $real_time =
+          $html->find('tr:nth-child(2) table tr:last-child td:last-child');
+
         $rss->add_item(
             title => encode( "utf-8", $e->{'title'} ),
             link  => $url,
@@ -119,7 +122,9 @@ sub create_rss_file {
               encode_entities( encode( "utf-8", $html ), q{<>&'"} ),
             pubDate => strftime(
                 "%a, %d %b %Y %H:%M:%S %z",
-                localtime( str2time( ( $e->{'time'} ) ) )
+                localtime(
+                    str2time( $real_time ? $real_time->text : $e->{'time'} )
+                )
             ),
         );
     }
